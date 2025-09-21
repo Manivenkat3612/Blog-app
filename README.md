@@ -287,37 +287,10 @@ The application has been thoroughly tested across multiple scenarios:
 - **Search & Navigation**: Content discovery and app navigation
 - **Error Handling**: Network failures, validation errors, edge cases
 
-## 📱 Screenshots and Demo
-
-The application provides a modern, intuitive interface with:
-- Clean blog feed with engaging card designs
-- Rich text editor for content creation
-- Interactive profile pages with statistics
-- Smooth navigation and animations
-- Responsive design across different screen sizes
-
-## 🚀 Deployment
-
-### Backend Deployment
-The backend can be deployed to platforms like:
-- **Heroku**: Easy deployment with MongoDB Atlas
-- **AWS EC2**: Full control over server environment  
-- **DigitalOcean**: Cost-effective cloud hosting
-- **Railway**: Modern deployment platform
-
-### Mobile App Distribution
-- **Google Play Store**: Release APK for Android users
-- **iOS App Store**: Build and distribute iOS version
-- **Direct APK**: Share APK file for testing and demonstration
-
-## 📝 License
-
-This project was created for educational purposes as part of an internship assignment.
-
 ## 👨‍💻 Developer
 
 **Nerella Manivenkat**
-- Email: proman36122678@gmail.com
+- Email: 23211a66c1@bvrit.ac.in
 - Project: Mitt Arv Internship Assignment
 
 ---
@@ -581,7 +554,7 @@ flutter test              # Run widget tests
 
 ## 📊 Performance Metrics
 
-- **App Size**: ~15MB (release build)
+- **App Size**: ~56MB (release build)
 - **Load Time**: <2s on 3G connection
 - **API Response**: <500ms average
 - **Image Loading**: Cached with lazy loading
@@ -599,11 +572,3 @@ flutter test              # Run widget tests
 ## 👥 Contributing
 
 This project was developed as part of an internship assignment. For questions or suggestions, please contact the development team.
-
-## 📄 License
-
-This project is developed for educational purposes as part of the Mitt Arv internship program.
-
----
-
-**Developed with ❤️ using AI-powered development tools**
