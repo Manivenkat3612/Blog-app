@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Google Sign-In Web API Key -->
+    <string name="default_web_client_id">102213355298-j9aspooct2khjgo65tj7vs0bkdphgooi.apps.googleusercontent.com</string>
+    <string name="google_api_key">AIzaSyD09chOI02xZao4EVMo55m7PJK39mirvPg</string>
+    <string name="google_app_id">1:102213355298:android:0fa5af9abd37149c0f477b</string>
+    <string name="google_storage_bucket">flutter-27628.firebasestorage.app</string>
+    <string name="project_id">flutter-27628</string>
+</resources>
