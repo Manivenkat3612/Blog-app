@@ -10,12 +10,13 @@ import '../constants/api_constants.dart';
 import '../constants/app_routes.dart';
 import 'user_controller.dart';
 import 'blog_controller.dart';
+import '../utils/logger.dart';
 
 class AuthController extends GetxController {
   late final ApiService _apiService;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     clientId: kIsWeb ? '102213355298-j9aspooct2khjgo65tj7vs0bkdphgooi.apps.googleusercontent.com' : null,
-    serverClientId: '102213355298-j9aspooct2khjgo65tj7vs0bkdphgooi.apps.googleusercontent.com',
+    serverClientId: kIsWeb ? null : '102213355298-j9aspooct2khjgo65tj7vs0bkdphgooi.apps.googleusercontent.com',
     scopes: ['email', 'profile'],
   );
   
@@ -28,7 +29,7 @@ class AuthController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _apiService = Get.find<ApiService>();
+    _apiService = Get.isRegistered<ApiService>() ? Get.find<ApiService>() : ApiService();
     checkAuthStatus();
   }
   
@@ -38,14 +39,22 @@ class AuthController extends GetxController {
       final prefs = await SharedPreferences.getInstance();
       final token = prefs.getString('auth_token');
       
-      if (token != null && !Jwt.isExpired(token)) {
-        await getCurrentUser();
-        isLoggedIn.value = true;
-      } else {
-        await logout();
+      if (token != null && token.isNotEmpty) {
+        try {
+          if (!Jwt.isExpired(token)) {
+            await getCurrentUser();
+            isLoggedIn.value = true;
+            return;
+          }
+        } catch (e) {
+          logDebug('JWT validation error: $e');
+        }
       }
+      
+      // If no valid token, logout
+      await logout();
     } catch (e) {
-      print('Error checking auth status: $e');
+  logDebug('Error checking auth status: $e');
       await logout();
     }
   }
@@ -66,7 +75,7 @@ class AuthController extends GetxController {
       
       if (response.statusCode == 200) {
         final data = response.data;
-        print('Login response data: $data'); // Debug log
+  logDebug('Login response data: $data');
         
         if (data != null && data['token'] != null) {
           await _saveTokens(data['token'].toString(), data['refreshToken']?.toString());
@@ -89,11 +98,11 @@ class AuthController extends GetxController {
       return false;
     } on DioException catch (e) {
       error.value = _apiService.getErrorMessage(e);
-      print('Login DioException: ${e.response?.data}');
+  logDebug('Login DioException: ${e.response?.data}');
       return false;
     } catch (e) {
       error.value = 'An unexpected error occurred: $e';
-      print('Login error: $e');
+  logDebug('Login error: $e');
       return false;
     } finally {
       isLoading.value = false;
@@ -117,7 +126,7 @@ class AuthController extends GetxController {
       
       if (response.statusCode == 201) {
         final data = response.data;
-        print('Register response data: $data'); // Debug log
+  logDebug('Register response data: $data');
         
         if (data != null && data['token'] != null) {
           await _saveTokens(data['token'].toString(), data['refreshToken']?.toString());
@@ -129,7 +138,7 @@ class AuthController extends GetxController {
           isLoggedIn.value = true;
           
           // Navigate to home after successful registration
-          Get.offAllNamed(AppRoutes.home);
+              Get.offAllNamed(AppRoutes.home);
           return true;
         } else {
           error.value = 'Invalid response from server';
@@ -140,11 +149,11 @@ class AuthController extends GetxController {
       return false;
     } on DioException catch (e) {
       error.value = _apiService.getErrorMessage(e);
-      print('Registration DioException: ${e.response?.data}');
+  logDebug('Registration DioException: ${e.response?.data}');
       return false;
     } catch (e) {
       error.value = 'An unexpected error occurred: $e';
-      print('Registration error: $e');
+  logDebug('Registration error: $e');
       return false;
     } finally {
       isLoading.value = false;
@@ -179,7 +188,7 @@ class AuthController extends GetxController {
       
       if (response.statusCode == 200) {
         final data = response.data;
-        print('Google auth response data: $data'); // Debug log
+  logDebug('Google auth response data: $data');
         
         if (data != null && data['token'] != null) {
           await _saveTokens(data['token'].toString(), data['refreshToken']?.toString());
@@ -202,11 +211,11 @@ class AuthController extends GetxController {
       return false;
     } on DioException catch (e) {
       error.value = _apiService.getErrorMessage(e);
-      print('Google SignIn DioException: ${e.response?.data}');
+  logDebug('Google SignIn DioException: ${e.response?.data}');
       return false;
     } catch (e) {
       error.value = 'Google sign in failed: $e';
-      print('Google SignIn error: $e');
+  logDebug('Google SignIn error: $e');
       return false;
     } finally {
       isLoading.value = false;
@@ -222,7 +231,7 @@ class AuthController extends GetxController {
         currentUser.value = User.fromJson(response.data);
       }
     } catch (e) {
-      print('Error getting current user: $e');
+  logDebug('Error getting current user: $e');
     }
   }
   
@@ -232,30 +241,38 @@ class AuthController extends GetxController {
       // Call logout API
       await _apiService.post(ApiConstants.logout);
     } catch (e) {
-      print('Error calling logout API: $e');
+  logDebug('Error calling logout API: $e');
     } finally {
       // Clear local data
       await _clearAuthData();
       currentUser.value = null;
       isLoggedIn.value = false;
       
-      // Clear user controller data
-      final userController = Get.find<UserController>();
-      userController.clearUserData();
+      // Clear user controller data safely
+      try {
+        final userController = Get.find<UserController>();
+        userController.clearUserData();
+      } catch (e) {
+  logDebug('UserController not found: $e');
+      }
       
-      // Clear blog controller data
+      // Clear blog controller data safely
       try {
         final blogController = Get.find<BlogController>();
         blogController.clearData();
       } catch (e) {
-        print('BlogController not found: $e');
+  logDebug('BlogController not found: $e');
       }
       
-      // Sign out from Google
-      await _googleSignIn.signOut();
+      // Sign out from Google safely
+      try {
+        await _googleSignIn.signOut();
+      } catch (e) {
+  logDebug('Error signing out from Google: $e');
+      }
       
       // Navigate to login
-      Get.offAllNamed(AppRoutes.login);
+  Get.offAllNamed(AppRoutes.login);
     }
   }
   
@@ -272,7 +289,7 @@ class AuthController extends GetxController {
         await prefs.setString('refresh_token', refreshToken);
       }
     } catch (e) {
-      print('Error saving tokens: $e');
+  logDebug('Error saving tokens: $e');
     }
   }
   

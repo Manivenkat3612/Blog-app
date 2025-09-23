@@ -1,46 +1,44 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
-import '../../constants/app_theme.dart';
 import '../../controllers/blog_controller.dart';
-import '../../widgets/custom_button.dart';
-import '../../widgets/custom_text_field.dart';
+import '../../widgets/glass_ui.dart';
+// removed unused modern_app_routes import
 
-class CreateBlogScreen extends StatefulWidget {
-  const CreateBlogScreen({super.key});
+class CreateBlogScreen extends StatefulWidget { const CreateBlogScreen({super.key}); @override State<CreateBlogScreen> createState() => _CreateBlogScreenState(); }
 
-  @override
-  State<CreateBlogScreen> createState() => _CreateBlogScreenState();
-}
-
-class _CreateBlogScreenState extends State<CreateBlogScreen> {
-  final BlogController _blogController = Get.find<BlogController>();
+class _CreateBlogScreenState extends State<CreateBlogScreen> with SingleTickerProviderStateMixin {
+  final _blogController = Get.find<BlogController>();
+  final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _excerptController = TextEditingController();
-  final _contentController = TextEditingController(); // For web content
-  final QuillController _quillController = QuillController.basic();
-  final _formKey = GlobalKey<FormState>();
-  final ImagePicker _imagePicker = ImagePicker();
-  
-  File? _featuredImage;
-  String _selectedCategory = 'General';
-  final List<String> _tags = [];
+  final _contentController = TextEditingController();
   final _tagController = TextEditingController();
-  
-  final List<String> _categories = [
-    'Technology',
-    'Health',
-    'Lifestyle',
-    'Travel',
-    'Business',
-    'General'
-  ];
+  final _quillController = QuillController.basic();
+  final _imagePicker = ImagePicker();
+
+  File? _featuredImage; String _selectedCategory = 'Technology'; final List<String> _tags = []; 
+  final List<String> _categories = ['Technology','Health','Lifestyle','Travel','Business','General'];
+
+  late AnimationController _anim; late Animation<double> _fade;
 
   @override
-  void dispose() {
+  void initState() {
+    super.initState();
+    // Initialize animations that were previously missing (preventing LateInitializationError)
+    _anim = AnimationController(vsync: this, duration: const Duration(milliseconds: 650));
+    _fade = CurvedAnimation(parent: _anim, curve: Curves.easeOutCubic);
+    _anim.forward();
+  }
+
+  @override void dispose(){
+    // Dispose animation & controllers
+    if(mounted){
+      _anim.dispose();
+    }
     _titleController.dispose();
     _excerptController.dispose();
     _contentController.dispose();
@@ -49,37 +47,7 @@ class _CreateBlogScreenState extends State<CreateBlogScreen> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
-    try {
-      final XFile? image = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 80,
-      );
-      if (image != null) {
-        if (kIsWeb) {
-          // For web, we don't use File, just store the path/name
-          setState(() {
-            _featuredImage = null; // We'll handle web differently
-          });
-          Get.snackbar(
-            'Info',
-            'Image selected: ${image.name}',
-            snackPosition: SnackPosition.BOTTOM,
-          );
-        } else {
-          setState(() {
-            _featuredImage = File(image.path);
-          });
-        }
-      }
-    } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Failed to pick image: $e',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-    }
-  }
+  Future<void> _pickImage() async { try { final image = await _imagePicker.pickImage(source: ImageSource.gallery,imageQuality:80); if(image!=null && !kIsWeb){ setState(()=>_featuredImage=File(image.path)); } else if(image!=null){ Get.snackbar('Image','Selected: ${image.name}', snackPosition: SnackPosition.BOTTOM);} } catch(e){ Get.snackbar('Error','Failed to pick image: $e', snackPosition: SnackPosition.BOTTOM); } }
 
   void _addTag() {
     final tag = _tagController.text.trim();
@@ -97,324 +65,242 @@ class _CreateBlogScreenState extends State<CreateBlogScreen> {
     });
   }
 
-  Future<void> _saveBlog() async {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _saveBlog() async { if(!_formKey.currentState!.validate()) return; final content = kIsWeb ? _contentController.text.trim() : _quillController.document.toPlainText().trim(); if(content.isEmpty){ Get.snackbar('Error','Content cannot be empty'); return;} try{ await _blogController.createNewBlog(title:_titleController.text.trim(), content: content, excerpt:_excerptController.text.trim(), category:_selectedCategory.toLowerCase(), tags:_tags, featuredImage:_featuredImage); Get.back(); Get.snackbar('Success','Blog published'); } catch(e){ Get.snackbar('Error','Failed: $e'); } }
 
-    String content;
-    if (kIsWeb) {
-      content = _contentController.text.trim();
-    } else {
-      // For mobile, get the plain text from Quill controller
-      final plainText = _quillController.document.toPlainText().trim();
-      content = plainText;
-    }
-    
-    print('Content extracted: "$content" (length: ${content.length})'); // Debug log
-    
-    if (content.isEmpty) {
-      Get.snackbar(
-        'Error',
-        'Blog content cannot be empty',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-      return;
-    }
-
-    if (_titleController.text.trim().isEmpty) {
-      Get.snackbar(
-        'Error', 
-        'Blog title cannot be empty',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-      return;
-    }
-
-    try {
-      await _blogController.createNewBlog(
-        title: _titleController.text.trim(),
-        content: content,
-        excerpt: _excerptController.text.trim(),
-        category: _selectedCategory.toLowerCase(),
-        tags: _tags,
-        featuredImage: _featuredImage,
-      );
-      
-      Get.back();
-      Get.snackbar(
-        'Success',
-        'Blog created successfully!',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-    } catch (e) {
-      Get.snackbar(
-        'Error',
-        'Failed to create blog: $e',
-        snackPosition: SnackPosition.BOTTOM,
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Create Blog'),
-        actions: [
-          Obx(() => _blogController.isLoading.value
-              ? const Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    ),
-                  ),
-                )
-              : TextButton(
-                  onPressed: _saveBlog,
-                  child: const Text(
-                    'Publish',
-                    style: TextStyle(color: Colors.white),
-                  ),
-                ),
-          ),
-        ],
-      ),
-      body: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Title Field
-              CustomTextField(
-                controller: _titleController,
-                label: 'Blog Title',
-                hintText: 'Enter your blog title...',
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter a title';
-                  }
-                  if (value.trim().length < 5) {
-                    return 'Title must be at least 5 characters';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-
-              // Excerpt Field
-              CustomTextField(
-                controller: _excerptController,
-                label: 'Excerpt (Optional)',
-                hintText: 'Brief description of your blog...',
-                maxLines: 3,
-              ),
-              const SizedBox(height: 16),
-
-              // Featured Image Section
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Featured Image',
-                            style: AppTextStyles.h3,
-                          ),
-                          TextButton.icon(
-                            onPressed: _pickImage,
-                            icon: const Icon(Icons.image),
-                            label: Text(_featuredImage == null 
-                                ? 'Add Image' 
-                                : 'Change Image'),
-                          ),
-                        ],
-                      ),
-                      if (_featuredImage != null) ...[
-                        const SizedBox(height: 12),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.file(
-                            _featuredImage!,
-                            height: 200,
-                            width: double.infinity,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-                      ],
+  @override Widget build(BuildContext context){
+    return GlassScaffold(
+      child: FadeTransition(
+        opacity: _fade,
+        child: LayoutBuilder(
+          builder:(ctx,con){
+            final isNarrow = con.maxWidth < 760;
+            final content = ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 820),
+              child: isNarrow
+                ? _mobileBody()
+                : Column(
+                    children:[
+                      _topBar(),
+                      const SizedBox(height:16),
+                      Expanded(child: _editorBody()),
+                      const SizedBox(height:12),
+                      _footer(),
                     ],
                   ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Category Selection
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Category',
-                        style: AppTextStyles.h3,
-                      ),
-                      const SizedBox(height: 12),
-                      DropdownButtonFormField<String>(
-                        value: _selectedCategory,
-                        decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        ),
-                        items: _categories.map((category) {
-                          return DropdownMenuItem(
-                            value: category,
-                            child: Text(category),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            _selectedCategory = value!;
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Tags Section
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Tags',
-                        style: AppTextStyles.h3,
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: TextField(
-                              controller: _tagController,
-                              decoration: const InputDecoration(
-                                hintText: 'Add a tag...',
-                                border: OutlineInputBorder(),
-                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                              ),
-                              onSubmitted: (_) => _addTag(),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            onPressed: _addTag,
-                            icon: const Icon(Icons.add),
-                          ),
-                        ],
-                      ),
-                      if (_tags.isNotEmpty) ...[
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 4,
-                          children: _tags.map((tag) {
-                            return Chip(
-                              label: Text(tag),
-                              onDeleted: () => _removeTag(tag),
-                              backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                              labelStyle: const TextStyle(color: AppColors.primary),
-                            );
-                          }).toList(),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // Content Editor
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Content',
-                        style: AppTextStyles.h3,
-                      ),
-                      const SizedBox(height: 12),
-                      Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey.shade300),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: kIsWeb 
-                          ? Container(
-                              padding: const EdgeInsets.all(16),
-                              child: TextField(
-                                controller: _contentController,
-                                maxLines: 15,
-                                decoration: const InputDecoration(
-                                  hintText: 'Write your blog content here...',
-                                  border: InputBorder.none,
-                                ),
-                              ),
-                            )
-                          : Column(
-                              children: [
-                                QuillSimpleToolbar(
-                                  controller: _quillController,
-                                ),
-                                Container(
-                                  height: 300,
-                                  padding: const EdgeInsets.all(16),
-                                  child: QuillEditor.basic(
-                                    controller: _quillController,
-                                  ),
-                                ),
-                              ],
-                            ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Save Draft Button
-              CustomButton(
-                text: 'Save as Draft',
-                backgroundColor: Colors.grey.shade600,
-                onPressed: () {
-                  // TODO: Implement save as draft functionality
-                  Get.snackbar(
-                    'Info',
-                    'Save as draft feature coming soon!',
-                    snackPosition: SnackPosition.BOTTOM,
-                  );
-                },
-              ),
-              const SizedBox(height: 80), // Extra space for floating action
-            ],
-          ),
+            );
+            return Center(child: content);
+          },
         ),
       ),
     );
   }
+
+  // Mobile friendly scrollable body to avoid RenderFlex overflow & expose image picker early
+  Widget _mobileBody(){
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(16,12,16, bottomInset + 40),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children:[
+            _topBar(),
+            const SizedBox(height:18),
+            // Inline cover image picker (so user immediately sees option)
+            _coverImagePickerCard(),
+            const SizedBox(height:22),
+            _mainForm(),
+            const SizedBox(height:26),
+            _categoryCard(),
+            const SizedBox(height:26),
+            _tagsCard(),
+            const SizedBox(height:28),
+            _footer(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _topBar(){
+    return Row(children:[
+      GestureDetector(
+        onTap: ()=>Get.back(),
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), color: Colors.white.withValues(alpha: .08), border: Border.all(color: Colors.white.withValues(alpha: .18))),
+          child: const Icon(Icons.arrow_back_ios_new_rounded,color: Colors.white,size:18),
+        ),
+      ),
+      const SizedBox(width:14),
+      const Text('New Article', style: TextStyle(color: Colors.white,fontSize:22,fontWeight: FontWeight.w700)),
+      const Spacer(),
+      Obx(()=>Glass.gradientButton(label: 'Publish', onTap: _blogController.isLoading.value? null : _saveBlog, height:46, loading: _blogController.isLoading.value)),
+    ]);
+  }
+
+  Widget _editorBody(){
+  return LayoutBuilder(builder:(c,con){
+    // On narrow screens show meta panel (image, category, tags) BELOW the form in a scroll view
+    if(con.maxWidth <= 750){
+      return SingleChildScrollView(
+        padding: const EdgeInsets.only(bottom:120),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children:[
+            _mainForm(),
+            const SizedBox(height:22),
+            _metaPanel(),
+          ],
+        ),
+      );
+    }
+    // Wide layout: side-by-side
+    return Row(crossAxisAlignment: CrossAxisAlignment.start, children:[
+      Expanded(flex:3, child: _mainForm()),
+      const SizedBox(width:22),
+      Expanded(flex:2, child: _metaPanel()),
+    ]);
+  });
+  }
+
+  Widget _mainForm(){
+    return Glass.surface(
+      padding: const EdgeInsets.fromLTRB(26,30,26,30),
+      tint: Colors.white,
+      opacity: .85,
+      border: const BorderSide(color: Color(0x22000000)),
+      child: Form(
+      key:_formKey,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children:[
+        TextFormField(
+          controller:_titleController,
+          style: const TextStyle(color:Colors.black,fontSize:28,fontWeight: FontWeight.w700, letterSpacing:-.5),
+          decoration: const InputDecoration(border: InputBorder.none, hintText: 'Title your masterpiece...', hintStyle: TextStyle(color: Colors.black38, fontSize:26,fontWeight: FontWeight.w600)),
+          validator:(v)=> (v==null||v.trim().length<5)?'Min 5 chars':null,
+        ),
+        const SizedBox(height:10),
+        TextFormField(
+          controller:_excerptController,
+          maxLines:2,
+          style: const TextStyle(color:Colors.black87,fontSize:14,height:1.3),
+          decoration: const InputDecoration(border: InputBorder.none, hintText:'Short teaser (optional)', hintStyle: TextStyle(color: Colors.black38)),
+        ),
+        const SizedBox(height:22),
+        Container(
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: Colors.black.withValues(alpha: .12)), color: Colors.white.withValues(alpha: .92)),
+          child: kIsWeb
+            ? TextField(
+                controller:_contentController,
+                maxLines:18,
+                style: const TextStyle(color:Colors.black87,height:1.4),
+                decoration: const InputDecoration(contentPadding: EdgeInsets.all(18), border: InputBorder.none, hintText:'Write your story...', hintStyle: TextStyle(color: Colors.black38)),
+              )
+            : Column(children:[
+                Theme(
+                  data: Theme.of(context).copyWith(
+                    iconTheme: const IconThemeData(color: Colors.black87),
+                    textTheme: Theme.of(context).textTheme.apply(bodyColor: Colors.black87, displayColor: Colors.black87),
+                  ),
+                  child: QuillSimpleToolbar(controller: _quillController),
+                ),
+                Container(
+                  height:300,
+                  padding: const EdgeInsets.all(12),
+                  color: Colors.white.withValues(alpha: .0),
+                  child: Theme(
+                    data: Theme.of(context).copyWith(textTheme: Theme.of(context).textTheme.apply(bodyColor: Colors.black87, displayColor: Colors.black87)),
+                    child: QuillEditor.basic(controller:_quillController),
+                  ),
+                ),
+              ]),
+        ),
+        const SizedBox(height:28),
+        Row(children:[
+          Expanded(child: Glass.gradientButton(label:'Save Draft', onTap: ()=>Get.snackbar('Coming soon','Draft feature pending'))),
+          const SizedBox(width:14),
+          Expanded(child: Glass.gradientButton(label:'Preview', onTap: ()=>Get.snackbar('Preview','Coming soon'))),
+        ])
+      ]),
+    ));
+  }
+
+  Widget _metaPanel(){
+    return SingleChildScrollView(child: Column(children:[
+      _coverImagePickerCard(),
+      const SizedBox(height:22),
+      _categoryCard(),
+      const SizedBox(height:22),
+      _tagsCard(),
+    ]));
+  }
+
+  Widget _coverImagePickerCard(){
+    return Glass.surface(padding: const EdgeInsets.all(20), tint: Colors.white, opacity: .85, border: const BorderSide(color: Color(0x22000000)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children:[
+      const Text('Cover Image', style: TextStyle(color: Colors.black,fontWeight: FontWeight.w600, fontSize:16)),
+      const SizedBox(height:14),
+      GestureDetector(
+        onTap:_pickImage,
+        child: Container(
+          height:170,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Colors.black.withValues(alpha: .15)),
+            color: Colors.white.withValues(alpha: .90),
+            image: _featuredImage!=null ? DecorationImage(image: FileImage(_featuredImage!), fit: BoxFit.cover):null,
+          ),
+          child: _featuredImage==null ? Center(child: Column(mainAxisSize: MainAxisSize.min,children: const [Icon(Icons.add_a_photo_outlined,color: Colors.black54,size:30), SizedBox(height:8), Text('Add Image', style: TextStyle(color: Colors.black54))])):null,
+        ),
+      ),
+    ]));
+  }
+
+  Widget _categoryCard(){
+    return Glass.surface(padding: const EdgeInsets.all(20), tint: Colors.white, opacity: .85, border: const BorderSide(color: Color(0x22000000)), child: Column(crossAxisAlignment: CrossAxisAlignment.start,children:[
+      const Text('Category', style: TextStyle(color: Colors.black,fontWeight: FontWeight.w600, fontSize:16)),
+      const SizedBox(height:12),
+      DropdownButtonFormField<String>(
+        value:_selectedCategory,
+        dropdownColor: Colors.white,
+        iconEnabledColor: Colors.black54,
+        style: const TextStyle(color: Colors.black87),
+        decoration: InputDecoration(
+          filled: true, fillColor: Colors.black.withValues(alpha: .04),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.black.withValues(alpha: .25))),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: Colors.black.withValues(alpha: .25))),
+        ),
+        items: _categories.map((c)=>DropdownMenuItem(value:c, child: Text(c))).toList(),
+        onChanged:(v)=>setState(()=>_selectedCategory=v!),
+      ),
+    ]));
+  }
+
+  Widget _tagsCard(){
+    return Glass.surface(padding: const EdgeInsets.all(20), tint: Colors.white, opacity: .85, border: const BorderSide(color: Color(0x22000000)), child: Column(crossAxisAlignment: CrossAxisAlignment.start,children:[
+      const Text('Tags', style: TextStyle(color: Colors.black,fontWeight: FontWeight.w600, fontSize:16)),
+      const SizedBox(height:12),
+      Row(children:[
+        Expanded(child: Glass.frostedField(child: TextField(
+          controller:_tagController,
+          style: const TextStyle(color: Colors.black87),
+          decoration: const InputDecoration(border: InputBorder.none, hintText:'Add tag', hintStyle: TextStyle(color: Colors.black38), contentPadding: EdgeInsets.symmetric(horizontal:14, vertical:14)),
+          onSubmitted:(_)=>_addTag(),
+        ))),
+        const SizedBox(width:10),
+        GestureDetector(onTap:_addTag, child: Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(shape: BoxShape.circle, gradient: const LinearGradient(colors:[Color(0xFF6366F1),Color(0xFF8B5CF6)]), boxShadow:[BoxShadow(color: const Color(0xFF6366F1).withValues(alpha: .4), blurRadius:16, offset: Offset(0,6))]), child: const Icon(Icons.add,color: Colors.white)))
+      ]),
+      if(_tags.isNotEmpty) ...[
+        const SizedBox(height:12),
+        Wrap(spacing:8, runSpacing:6, children: _tags.map((t)=>_tagChip(t)).toList())
+      ]
+    ]));
+  }
+
+  Widget _tagChip(String tag)=> GestureDetector(onTap: ()=>_removeTag(tag), child: Container(
+    padding: const EdgeInsets.symmetric(horizontal:12, vertical:6),
+  decoration: BoxDecoration(borderRadius: BorderRadius.circular(20), color: Colors.black.withValues(alpha: .05), border: Border.all(color: Colors.black.withValues(alpha: .18))),
+    child: Row(mainAxisSize: MainAxisSize.min, children:[ Text('#$tag', style: const TextStyle(color: Colors.black87,fontSize:12)), const SizedBox(width:6), const Icon(Icons.close, size:14,color: Colors.black54)])
+  ));
+
+  Widget _footer()=> Opacity(opacity:.7, child: Text('© ${DateTime.now().year} Blog Studio – Writing Redefined', style: const TextStyle(color: Colors.black54, fontSize:12)));
 }

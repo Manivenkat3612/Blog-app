@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../controllers/comment_controller.dart';
 import '../constants/app_theme.dart';
+import 'glass_ui.dart';
 
 class CommentInput extends StatefulWidget {
   final String blogId;
@@ -50,16 +51,11 @@ class _CommentInputState extends State<CommentInput> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(
-          top: BorderSide(
-            color: AppColors.primary.withOpacity(0.1),
-          ),
-        ),
-      ),
+    return Glass.surface(
+      radius: 20,
+      padding: const EdgeInsets.fromLTRB(14,12,14,10),
+      tint: Colors.white,
+      opacity: .30,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -69,14 +65,14 @@ class _CommentInputState extends State<CommentInput> {
               children: [
                 Icon(
                   Icons.reply,
-                  size: 16,
-                  color: AppColors.primary,
+                  size: 15,
+                  color: Colors.white70,
                 ),
                 const SizedBox(width: 4),
                 Text(
                   'Replying to ${widget.replyToName}',
                   style: AppTextStyles.caption.copyWith(
-                    color: AppColors.primary,
+                    color: Colors.white70,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -86,6 +82,7 @@ class _CommentInputState extends State<CommentInput> {
                   icon: const Icon(
                     Icons.close,
                     size: 16,
+                    color: Colors.white60,
                   ),
                   constraints: const BoxConstraints(),
                   padding: EdgeInsets.zero,
@@ -94,51 +91,44 @@ class _CommentInputState extends State<CommentInput> {
             ),
             const SizedBox(height: 8),
           ],
-          TextField(
-            controller: _controller,
-            maxLines: 3,
-            decoration: InputDecoration(
-              hintText: widget.parentId != null 
-                  ? 'Write a reply...' 
-                  : 'Write a comment...',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8.0),
-                borderSide: BorderSide(
-                  color: AppColors.primary.withOpacity(0.3),
-                ),
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 120),
+            child: TextField(
+              controller: _controller,
+              maxLines: null,
+              keyboardType: TextInputType.multiline,
+              decoration: const InputDecoration(
+                isDense: true,
+                border: InputBorder.none,
+                hintText: 'Write a comment...',
+                hintStyle: TextStyle(color: Colors.white54, fontSize:13),
               ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8.0),
-                borderSide: BorderSide(
-                  color: AppColors.primary,
-                ),
-              ),
-              contentPadding: const EdgeInsets.all(12.0),
+              style: AppTextStyles.bodyMedium.copyWith(color: Colors.white),
             ),
-            style: AppTextStyles.bodyMedium,
           ),
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              if (widget.parentId != null)
+              if (widget.parentId != null) ...[
                 TextButton(
                   onPressed: widget.onCancel,
+                  style: TextButton.styleFrom(foregroundColor: Colors.white70),
                   child: const Text('Cancel'),
                 ),
-              const SizedBox(width: 8),
+                const SizedBox(width: 8),
+              ],
               Obx(
                 () => ElevatedButton(
                   onPressed: _commentController.isPosting.value
                       ? null
                       : _submitComment,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: const Color(0xFF6366F1),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal:16, vertical:10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
                   ),
                   child: _commentController.isPosting.value
                       ? const SizedBox(

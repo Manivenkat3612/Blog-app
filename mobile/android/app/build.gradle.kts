@@ -1,3 +1,5 @@
+import org.gradle.api.tasks.compile.JavaCompile
+
 plugins {
     id("com.android.application")
     // START: FlutterFire Configuration
@@ -20,6 +22,12 @@ android {
 
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_11.toString()
+    }
+
+    // Configure all Java compile tasks (avoid using options.release which conflicts with AGP bootclasspath handling)
+    tasks.withType<JavaCompile>().configureEach {
+        // Ensure toolchain uses Java 11 via source/targetCompatibility already set above
+        options.compilerArgs.addAll(listOf("-Xlint:-options", "-Xlint:-deprecation"))
     }
 
     defaultConfig {

@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../models/comment.dart';
 import '../controllers/auth_controller.dart';
 import '../constants/app_theme.dart';
+import 'glass_ui.dart';
 
 class CommentWidget extends StatelessWidget {
   final Comment comment;
@@ -26,20 +27,17 @@ class CommentWidget extends StatelessWidget {
 
     return Container(
       margin: EdgeInsets.only(
-        left: depth * 20.0,
-        bottom: 8.0,
+        left: depth * 16.0,
+        bottom: 12.0,
       ),
-      padding: const EdgeInsets.all(12.0),
-      decoration: BoxDecoration(
-        color: depth > 0 ? AppColors.cardColor : Colors.white,
-        borderRadius: BorderRadius.circular(8.0),
-        border: Border.all(
-          color: AppColors.primary.withOpacity(0.1),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+      child: Glass.surface(
+        padding: const EdgeInsets.fromLTRB(14,12,14,12),
+        radius: 22,
+        opacity: depth==0? .35 : .28,
+        tint: Colors.white,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           // Author info
           Row(
             children: [
@@ -50,7 +48,10 @@ class CommentWidget extends StatelessWidget {
                     : null,
                 child: comment.author.avatar == null
                     ? Text(
-                        comment.author.name[0].toUpperCase(),
+                        (comment.author.name.isNotEmpty
+                                ? comment.author.name[0]
+                                : '?')
+                            .toUpperCase(),
                         style: const TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.bold,
@@ -87,15 +88,15 @@ class CommentWidget extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           
           // Comment content
           Text(
             comment.content,
-            style: AppTextStyles.bodyMedium,
+            style: AppTextStyles.bodyMedium.copyWith(color: Colors.white),
           ),
           
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           
           // Actions
           Row(
@@ -109,7 +110,7 @@ class CommentWidget extends StatelessWidget {
                   ),
                   label: const Text('Reply'),
                   style: TextButton.styleFrom(
-                    foregroundColor: AppColors.primary,
+                    foregroundColor: Colors.white70,
                     textStyle: AppTextStyles.caption,
                   ),
                 ),
@@ -118,7 +119,7 @@ class CommentWidget extends StatelessWidget {
           
           // Replies
           if (comment.replies.isNotEmpty) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 6),
             ...comment.replies.map((reply) => CommentWidget(
               comment: reply,
               depth: depth + 1,
@@ -126,7 +127,8 @@ class CommentWidget extends StatelessWidget {
               onDelete: isCurrentUserComment ? onDelete : null,
             )),
           ],
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -1,273 +1,175 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../constants/app_theme.dart';
 import '../../controllers/blog_controller.dart';
-import '../../widgets/blog_card.dart';
-import '../../widgets/loading_widget.dart';
 import '../../constants/app_routes.dart';
+import '../../widgets/glass_blog_card.dart';
+import '../../widgets/glass_ui.dart';
 
-class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key});
+class SearchScreen extends StatefulWidget { const SearchScreen({super.key}); @override State<SearchScreen> createState()=> _SearchScreenState(); }
 
-  @override
-  State<SearchScreen> createState() => _SearchScreenState();
-}
-
-class _SearchScreenState extends State<SearchScreen> {
-  final BlogController _blogController = Get.find<BlogController>();
-  final TextEditingController _searchController = TextEditingController();
-  final RxList _searchResults = [].obs;
-  final RxBool _isSearching = false.obs;
-  final RxString _searchQuery = ''.obs;
-  final RxBool _hasSearchText = false.obs;
+class _SearchScreenState extends State<SearchScreen>{
+  final blogs = Get.find<BlogController>();
+  final q = TextEditingController();
+  final RxString query = ''.obs;
+  DateTime _lastSearch = DateTime.fromMillisecondsSinceEpoch(0);
 
   @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
+  void dispose(){ q.dispose(); super.dispose(); }
 
-  Future<void> _performSearch(String query) async {
-    if (query.trim().isEmpty) {
-      _searchResults.clear();
+  void _search(String text){
+    query.value = text;
+    if(text.trim().isEmpty){
+      blogs.searchResults.clear();
+      blogs.isSearching.value = false;
       return;
     }
-
-    _isSearching.value = true;
-    _searchQuery.value = query;
-
-    try {
-      // Filter blogs based on title, content, tags, or author name
-      final results = _blogController.blogs.where((blog) {
-        final searchLower = query.toLowerCase();
-        return blog.title.toLowerCase().contains(searchLower) ||
-            blog.content.toLowerCase().contains(searchLower) ||
-            blog.tags.any((tag) => tag.toLowerCase().contains(searchLower)) ||
-            blog.author.name.toLowerCase().contains(searchLower) ||
-            blog.category.toLowerCase().contains(searchLower);
-      }).toList();
-
-      _searchResults.value = results;
-    } catch (e) {
-      Get.snackbar('Error', 'Failed to search: $e');
-    } finally {
-      _isSearching.value = false;
-    }
+    // debounce basic (300ms)
+    final now = DateTime.now();
+    _lastSearch = now;
+    Future.delayed(const Duration(milliseconds:300), (){
+      if(now != _lastSearch) return; // a newer keystroke happened
+      blogs.searchBlogs(text.trim());
+    });
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Search Blogs'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-      ),
-      body: Column(
-        children: [
-          // Search Bar
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: Colors.white,
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search blogs, tags, or authors...',
-                prefixIcon: const Icon(Icons.search),
-                suffixIcon: Obx(() => _hasSearchText.value
-                    ? IconButton(
-                        icon: const Icon(Icons.clear),
-                        onPressed: () {
-                          _searchController.clear();
-                          _searchResults.clear();
-                          _searchQuery.value = '';
-                          _hasSearchText.value = false;
-                        },
-                      )
-                    : const SizedBox.shrink()),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: AppColors.primary.withOpacity(0.3),
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(
-                    color: AppColors.primary,
-                    width: 2,
-                  ),
-                ),
-                filled: true,
-                fillColor: AppColors.background,
-              ),
-              onChanged: (value) {
-                _hasSearchText.value = value.isNotEmpty;
-                _performSearch(value);
+  Widget build(BuildContext context){
+    return GlassScaffold(
+      child: Column(
+        children:[
+          const SizedBox(height: 6),
+          _bar(),
+          const SizedBox(height: 10),
+          Obx(()=> blogs.error.value.isNotEmpty && blogs.searchQuery.value.isNotEmpty ? _errorBanner(blogs.error.value) : const SizedBox.shrink()),
+          Expanded(child: Obx((){
+            final loading = blogs.isSearching.value && query.value.isNotEmpty;
+            final list = query.value.isEmpty ? <dynamic>[] : blogs.searchResults;
+            if(loading){ return const Center(child: CircularProgressIndicator()); }
+            if(query.value.isEmpty){ return _empty(); }
+            if(list.isEmpty){ return _noResults(); }
+            return ListView.builder(
+              padding: const EdgeInsets.fromLTRB(6,4,6,110),
+              itemCount: list.length,
+              itemBuilder: (_,i){
+                final b = list[i];
+                return GlassBlogCard(
+                  blog: b,
+                  onTap: ()=> Get.toNamed(AppRoutes.blogDetail, arguments: b),
+                  onLike: ()=> blogs.likeBlog(b.id),
+                  onBookmark: ()=> blogs.bookmarkBlog(b.id),
+                );
               },
-              textInputAction: TextInputAction.search,
-              onSubmitted: _performSearch,
-            ),
-          ),
-
-          // Search Results
-          Expanded(
-            child: Obx(() {
-              if (_isSearching.value) {
-                return const LoadingWidget();
-              }
-
-              if (_searchQuery.value.isEmpty) {
-                return _buildEmptyState();
-              }
-
-              if (_searchResults.isEmpty) {
-                return _buildNoResultsState();
-              }
-
-              return ListView.builder(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                itemCount: _searchResults.length,
-                itemBuilder: (context, index) {
-                  final blog = _searchResults[index];
-                  return BlogCard(
-                    blog: blog,
-                    onTap: () => Get.toNamed(
-                      AppRoutes.blogDetail,
-                      arguments: blog.id,
-                    ),
-                    onLike: () => _blogController.likeBlog(blog.id),
-                    onBookmark: () => _blogController.bookmarkBlog(blog.id),
-                  );
-                },
-              );
-            }),
-          ),
+            );
+          }))
         ],
       ),
     );
   }
 
-  Widget _buildEmptyState() {
-    return Container(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.search,
-            size: 64,
-            color: AppColors.textDisabled,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Search for blogs',
-            style: AppTextStyles.h3.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Find blogs by title, content, tags, or author',
-            style: AppTextStyles.body2,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          _buildPopularTags(),
-        ],
+  Widget _errorBanner(String msg)=> Padding(
+    padding: const EdgeInsets.fromLTRB(14,0,14,6),
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal:14, vertical:10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        color: Colors.red.withValues(alpha: .08),
+        border: Border.all(color: Colors.red.withValues(alpha: .25)),
       ),
-    );
-  }
+      child: Row(children:[
+        const Icon(Icons.error_outline, color: Colors.red, size:18),
+        const SizedBox(width:8),
+        Expanded(child: Text(msg, style: const TextStyle(color: Colors.red, fontSize:12))),
+        GestureDetector(onTap: ()=> blogs.clearError(), child: const Icon(Icons.close, size:16, color: Colors.red))
+      ]),
+    ),
+  );
 
-  Widget _buildNoResultsState() {
-    return Container(
-      padding: const EdgeInsets.all(32),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.search_off,
-            size: 64,
-            color: AppColors.textDisabled,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'No results found',
-            style: AppTextStyles.h3.copyWith(
-              color: AppColors.textSecondary,
+  Widget _bar(){
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14,8,14,0),
+      child: Glass.surface(
+        padding: EdgeInsets.zero,
+        tint: Colors.white,
+        opacity: .80,
+        border: const BorderSide(color: Color(0x22000000)),
+        child: Row(children:[
+          const SizedBox(width:10),
+          const Icon(Icons.search, color: Colors.black54, size:20),
+          const SizedBox(width:10),
+          Expanded(child: TextField(
+            controller: q,
+            cursorColor: Colors.black,
+            style: const TextStyle(color: Colors.black, fontSize:14.5, fontWeight: FontWeight.w500),
+            decoration: const InputDecoration(
+              border: InputBorder.none,
+              hintText: 'Search blogs, tags, authors...',
+              hintStyle: TextStyle(color: Colors.black54, fontSize:14,fontWeight: FontWeight.w400),
             ),
-          ),
-          const SizedBox(height: 8),
-          Obx(() => Text(
-            'No blogs found for "${_searchQuery.value}"',
-            style: AppTextStyles.body2,
-            textAlign: TextAlign.center,
+            onChanged: _search,
+            textInputAction: TextInputAction.search,
+            onSubmitted: _search,
           )),
-          const SizedBox(height: 16),
-          Text(
-            'Try searching with different keywords',
-            style: AppTextStyles.caption,
-            textAlign: TextAlign.center,
-          ),
-        ],
+          Obx(()=> query.value.isNotEmpty
+            ? GestureDetector(
+                onTap: (){q.clear(); query.value=''; blogs.searchResults.clear(); blogs.isSearching.value=false;},
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.black.withValues(alpha: .06),
+                    border: Border.all(color: Colors.black.withValues(alpha: .15)),
+                  ),
+                  child: const Icon(Icons.close, size:16, color: Colors.black54),
+                ),
+              )
+            : const SizedBox(width:4)),
+          const SizedBox(width:10),
+        ]),
       ),
     );
   }
 
-  Widget _buildPopularTags() {
-    // Get unique tags from all blogs
-    final allTags = <String>{};
-    for (final blog in _blogController.blogs) {
-      allTags.addAll(blog.tags);
-    }
-    
-    if (allTags.isEmpty) return const SizedBox.shrink();
+  Widget _empty(){
+    return Center(child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal:30),
+      child: Column(mainAxisAlignment: MainAxisAlignment.center,children:[
+        const Icon(Icons.search, size:66, color: Colors.black26),
+        const SizedBox(height:18),
+        const Text('Search Blogs', style: TextStyle(color: Colors.black87,fontSize:22,fontWeight: FontWeight.w700)),
+        const SizedBox(height:8),
+        Text('Find stories by title, tag, author or category', style: TextStyle(color: Colors.black54,fontSize:13), textAlign: TextAlign.center),
+        const SizedBox(height:30),
+        _popularTags(),
+      ]),
+    ));
+  }
 
-    final popularTags = allTags.take(6).toList();
+  Widget _noResults(){
+    return Center(child: Column(mainAxisAlignment: MainAxisAlignment.center,children:[
+      const Icon(Icons.search_off, size:64, color: Colors.black26),
+      const SizedBox(height:18),
+      const Text('No results', style: TextStyle(color: Colors.black87,fontSize:20,fontWeight: FontWeight.w600)),
+      const SizedBox(height:8),
+      Obx(()=> Text('Nothing found for "${query.value}"', style: const TextStyle(color: Colors.black54,fontSize:13))),
+    ]));
+  }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Popular Tags',
-          style: AppTextStyles.h3.copyWith(
-            color: AppColors.textSecondary,
-          ),
+  Widget _popularTags(){
+    final tags = <String>{};
+    for(final b in blogs.blogs){ tags.addAll(b.tags); }
+    if(tags.isEmpty) return const SizedBox.shrink();
+    final list = tags.take(8).toList();
+    return Wrap(spacing:8, runSpacing:8, children: list.map((t)=> GestureDetector(
+      onTap: (){ q.text = t; _search(t); },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal:12, vertical:7),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          color: Colors.black.withValues(alpha: .06),
+          border: Border.all(color: Colors.black.withValues(alpha: .18)),
         ),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: popularTags.map((tag) => GestureDetector(
-            onTap: () {
-              _searchController.text = tag;
-              _performSearch(tag);
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 6,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: AppColors.primary.withOpacity(0.3),
-                ),
-              ),
-              child: Text(
-                '#$tag',
-                style: AppTextStyles.caption.copyWith(
-                  color: AppColors.primary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          )).toList(),
-        ),
-      ],
-    );
+        child: Text('#$t', style: const TextStyle(color: Colors.black87,fontSize:12,fontWeight: FontWeight.w500)),
+      ),
+    )).toList());
   }
 }

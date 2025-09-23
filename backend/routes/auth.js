@@ -124,33 +124,56 @@ router.post('/login', [
   }
 });
 
-// Google OAuth login
+// Google OAuth login (supports multiple allowed client IDs)
 router.post('/google', async (req, res) => {
-  try {
-    const { idToken } = req.body;
+  const { idToken } = req.body || {};
+  if(!idToken){
+    return res.status(400).json({ error: 'Missing idToken' });
+  }
 
-    // Verify Google token
-    const ticket = await googleClient.verifyIdToken({
-      idToken,
-      audience: process.env.GOOGLE_CLIENT_ID
-    });
+  // Support env var with comma separated list of client IDs
+  const rawAud = process.env.GOOGLE_CLIENT_IDS || process.env.GOOGLE_CLIENT_ID || '';
+  const allowedAudiences = rawAud.split(',').map(s=>s.trim()).filter(Boolean);
+  if(allowedAudiences.length === 0){
+    return res.status(500).json({ error: 'Server Google client ID not configured' });
+  }
+  try {
+    let ticket;
+    let lastErr;
+    // Try each audience until one validates
+    for(const aud of allowedAudiences){
+      try {
+        ticket = await googleClient.verifyIdToken({ idToken, audience: aud });
+        break;
+      } catch(verErr){
+        lastErr = verErr;
+      }
+    }
+    if(!ticket){
+      console.error('Google auth verification failed for all audiences:', allowedAudiences, lastErr?.message || lastErr);
+      return res.status(400).json({ error: 'Invalid Google token (audience mismatch)', details: lastErr?.message });
+    }
 
     const payload = ticket.getPayload();
+    if(!payload){
+      return res.status(400).json({ error: 'Unable to decode Google token payload' });
+    }
+
     const { sub: googleId, name, email, picture } = payload;
+    if(!email){
+      return res.status(400).json({ error: 'Google token missing email' });
+    }
 
     // Find existing user or create new one
     let user = await User.findOne({ $or: [{ googleId }, { email }] });
-
     if (user) {
-      // Update Google ID if user exists but doesn't have it
       if (!user.googleId) {
         user.googleId = googleId;
         await user.save();
       }
     } else {
-      // Create new user
       user = new User({
-        name,
+        name: name || email.split('@')[0],
         email,
         googleId,
         profilePicture: picture,
@@ -160,8 +183,7 @@ router.post('/google', async (req, res) => {
     }
 
     const token = generateToken(user._id);
-
-    res.json({
+    return res.json({
       message: 'Google authentication successful',
       token,
       user: {
@@ -173,8 +195,8 @@ router.post('/google', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('Google auth error:', error);
-    res.status(400).json({ error: 'Google authentication failed' });
+    console.error('Google auth error (unexpected):', error);
+    return res.status(400).json({ error: 'Google authentication failed', details: error.message });
   }
 });
 
@@ -191,6 +213,17 @@ router.get('/me', auth, async (req, res) => {
       createdAt: req.user.createdAt
     }
   });
+});
+
+// Simple logout endpoint (stateless JWT) - kept for client symmetry
+// Since JWT is stateless we simply respond success; client clears tokens locally
+router.post('/logout', auth, async (req, res) => {
+  try {
+    return res.json({ message: 'Logged out successfully' });
+  } catch (e) {
+    console.error('Logout error:', e);
+    return res.status(500).json({ error: 'Logout failed' });
+  }
 });
 
 // Upload profile picture

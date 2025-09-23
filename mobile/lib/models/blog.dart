@@ -47,15 +47,24 @@ class Blog {
   }
 
   factory Blog.fromJson(Map<String, dynamic> json) {
+    // Create a default author if none provided
+    Map<String, dynamic> authorJson = json['author'] ?? {
+      '_id': 'unknown',
+      'name': 'Unknown Author',
+      'email': 'unknown@example.com',
+      'createdAt': DateTime.now().toIso8601String(),
+      'updatedAt': DateTime.now().toIso8601String(),
+    };
+    
     return Blog(
-      id: json['_id'] ?? json['id'],
-      title: json['title'] ?? '',
-      content: json['content'] ?? '',
-      excerpt: json['excerpt'],
-      featuredImage: json['featuredImage'],
+      id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
+      title: json['title']?.toString() ?? '',
+      content: json['content']?.toString() ?? '',
+      excerpt: json['excerpt']?.toString(),
+      featuredImage: json['featuredImage']?.toString(),
       tags: List<String>.from(json['tags'] ?? []),
-      category: json['category'] ?? '',
-      author: User.fromJson(json['author'] ?? {}),
+      category: json['category']?.toString() ?? '',
+      author: User.fromJson(authorJson),
       likes: _extractUserIds(json['likes'] ?? []),
       likesCount: json['likeCount'] ?? json['likesCount'] ?? 0,
       commentsCount: json['commentCount'] ?? json['commentsCount'] ?? 0,

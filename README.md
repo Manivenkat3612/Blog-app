@@ -1,574 +1,143 @@
-# Blog Platform - Internship Assignment
-
-A comprehensive Blog Platform built with **Flutter** (mobile) and **Node.js** (backend) for Mitt Arv internship assignment.
-
-## 📱 Project Overview
-
-This is a full-stack blog platform that allows users to create, read, update, and delete blog posts with a modern mobile interface. The platform features user authentication via Google Sign-In, rich text editing, image uploads, commenting system, user profiles, bookmarking, and search functionality.
-
-### Key Features
-- **User Authentication**: JWT-based authentication with Google OAuth integration
-- **Blog Management**: Create, edit, delete, and publish blog posts with rich text editor
-- **Media Support**: Image upload and display using Cloudinary integration
-- **Social Features**: Like, bookmark, and comment on blog posts
-- **User Profiles**: Customizable user profiles with profile picture upload
-- **Search & Filter**: Search blogs by title, content, and filter by categories
-- **Responsive Design**: Modern Flutter UI with smooth animations and interactions
-
-## 🚀 Tech Stack
-
-### Frontend (Mobile)
-- **Flutter** - Cross-platform mobile development framework
-- **GetX** - State management, routing, and dependency injection
-- **Dio** - HTTP client for REST API communication
-- **Firebase** - Google Sign-In integration and authentication
-- **Flutter Quill** - Rich text editor for blog content
-- **Cached Network Image** - Efficient image loading and caching
-- **Image Picker** - Camera and gallery image selection
-- **Shared Preferences** - Local data persistence
-
-### Backend (API)
-- **Node.js** - JavaScript runtime environment
-- **Express.js** - Web application framework
-- **MongoDB** - NoSQL database with Mongoose ODM
-- **JWT** - JSON Web Token authentication
-- **Cloudinary** - Cloud-based image storage and management
-- **Bcrypt** - Password hashing and security
-- **Google OAuth** - Third-party authentication integration
-- **Multer** - Multipart form data handling for file uploads
-
-### Database Schema
-- **Users**: Profile information, authentication data
-- **Blogs**: Blog posts with content, metadata, likes, bookmarks
-- **Comments**: Threaded commenting system with replies
-- **Categories**: Blog categorization system
-
-## 📋 Setup Instructions
-
-### Prerequisites
-- **Node.js** (v16 or higher)
-- **Flutter SDK** (v3.0 or higher)
-- **MongoDB** (local installation or MongoDB Atlas)
-- **Android Studio** (for Android development)
-- **VS Code** (recommended IDE)
-
-### Backend Setup
-
-1. **Navigate to backend directory**:
-   ```bash
-   cd backend
-   ```
-
-2. **Install dependencies**:
-   ```bash
    npm install
-   ```
+3. Create `.env` file with your credentials:
+3. Create your `.env` file (or copy from `.env.example`) and fill in required keys (MongoDB, Cloudinary, Google OAuth, JWT secrets).
 
-3. **Environment Configuration**:
-   Create a `.env` file in the backend directory with the following variables:
-   ```env
-   PORT=3000
-   MONGODB_URI=mongodb://localhost:27017/blog_platform
-   JWT_SECRET=your_jwt_secret_key
-   JWT_REFRESH_SECRET=your_refresh_secret_key
-   GOOGLE_CLIENT_ID=your_google_client_id
-   GOOGLE_CLIENT_SECRET=your_google_client_secret
-   CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
-   CLOUDINARY_API_KEY=your_cloudinary_api_key
-   CLOUDINARY_API_SECRET=your_cloudinary_api_secret
-   ```
-
-4. **Start the backend server**:
+4. Launch backend (dev):
    ```bash
    node server.js
    ```
-   The backend will run on `http://localhost:3000`
 
-### Mobile App Setup
+### Mobile (Flutter) Quick Start
+```bash
+cd mobile
+flutter pub get
+flutter run
+```
 
-1. **Navigate to mobile directory**:
-   ```bash
-   cd mobile
-   ```
+If you run on a physical device and the backend is on your PC, replace the API base URL constant with your machine's LAN IP.
 
-2. **Install Flutter dependencies**:
-   ```bash
-   flutter pub get
-   ```
-
-3. **Android Configuration**:
-   - Add your Google Services configuration file (`google-services.json`) to `android/app/`
-   - Update `android/app/src/main/res/values/strings.xml` with your Web API key:
-     ```xml
-     <string name="web_api_key">YOUR_WEB_API_KEY</string>
-     ```
-
-4. **iOS Configuration** (if targeting iOS):
-   - Add `GoogleService-Info.plist` to `ios/Runner/`
-   - Update iOS bundle identifier and configuration
-
-5. **Update API Base URL**:
-   In `lib/constants/api_constants.dart`, update the base URL:
-   ```dart
-   static const String baseUrl = 'http://YOUR_IP_ADDRESS:3000/api';
-   ```
-
-6. **Run the mobile app**:
-   ```bash
-   flutter run
-   ```
-
-### Building Release APK
-
-To build a release APK for distribution:
-
+### Release APK
 ```bash
 flutter build apk --release
 ```
+Output: `mobile/build/app/outputs/flutter-apk/app-release.apk`
 
-The APK will be generated at `build/app/outputs/flutter-apk/app-release.apk`
+## 3. Environment Variables
+Backend `.env` keys summary (see `.env.example` for the full list):
 
-## 🤖 AI Tools Documentation
+| Key | Purpose |
+|-----|---------|
+| PORT | API port (default 3000) |
+| MONGODB_URI | MongoDB connection string |
+| JWT_SECRET | Access token signing secret |
+| JWT_REFRESH_SECRET | Refresh token secret (if used) |
+| GOOGLE_CLIENT_IDS | Comma separated Google OAuth client IDs (web, android) |
+| CLOUDINARY_CLOUD_NAME / API_KEY / API_SECRET | Image hosting |
+| DB_RESET_ON_START | (Optional) If `true`, database will be dropped on boot (use only for local resets) |
 
-This project extensively leveraged AI tools throughout the development process to enhance productivity, code quality, and problem-solving capabilities.
+## 4. Architecture Snapshot
 
-### GitHub Copilot Usage
+High level data flow:
+User (Flutter app) -> REST calls (Dio) -> Express routes -> Controllers -> Mongoose Models -> MongoDB
 
-**Primary Usage**: Code completion, boilerplate generation, and API endpoint creation
+Selected conventions:
+- All protected routes expect a Bearer token (JWT) in `Authorization` header.
+- Controllers return consistent JSON `{ success, data, message }` or `{ success: false, error }`.
+- Images uploaded via multipart form go directly to Cloudinary; only secure URLs are stored.
+- Google sign‑in on device obtains idToken which is exchanged for app JWT on `/api/auth/google`.
 
-**Specific Applications**:
-- **Flutter Widget Creation**: Generated complex UI components, state management boilerplate, and navigation logic
-- **API Endpoint Structure**: Created REST API endpoints with proper error handling, validation, and response formatting
-- **Database Schema Design**: Suggested MongoDB schema structures and Mongoose model definitions
-- **Authentication Logic**: Implemented JWT token handling, Google OAuth integration, and security middleware
-- **Error Handling**: Generated comprehensive try-catch blocks and error response patterns
+## 5. Core Endpoints (Condensed)
 
-**Examples**:
-```javascript
-// Copilot-generated blog creation endpoint
-router.post('/', [auth, blogValidation], async (req, res) => {
-  try {
-    const blog = new Blog({
-      ...req.body,
-      author: req.user._id
-    });
-    await blog.save();
-    res.status(201).json(blog);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
+Auth:
+- POST `/api/auth/google` – Exchange Google idToken for app JWT
+- GET  `/api/auth/me` – Current user profile
+- POST `/api/auth/logout` – Invalidate refresh/session (stateless client just discards token)
+
+Blogs:
+- GET  `/api/blogs` – List (supports paging & search query params)
+- POST `/api/blogs` – Create (auth)
+- GET  `/api/blogs/:id` – Detail
+- PUT  `/api/blogs/:id` – Update (owner)
+- DELETE `/api/blogs/:id` – Delete (owner)
+- POST `/api/blogs/:id/like` – Toggle like
+- POST `/api/blogs/:id/bookmark` – Toggle bookmark
+
+Comments:
+- GET  `/api/comments/:blogId`
+- POST `/api/comments` (auth)
+- DELETE `/api/comments/:id` (owner/moderator)
+
+Users:
+- GET `/api/users/me/bookmarks`
+- PUT `/api/users/profile`
+
+## 6. Mobile App Highlights
+
+Visual theme: full glassmorphism layer stack (blurred panels, gradient backdrops) with reusable components in `lib/widgets/` (glass cards, frosted text fields, primary actions).
+
+Important directories:
+- `lib/controllers/` – GetX controllers (Auth, Blog, Comment, Search, Profile)
+- `lib/services/` – API service wrappers (Dio instances, interceptors for auth token)
+- `lib/models/` – Data models with `fromJson/toJson`
+- `lib/screens/` – Screen widgets (auth, feed, detail, create/edit, profile, search)
+- `lib/constants/` – App-wide constants (API base URL, colors, theming)
+
+State management pattern:
+1. Bind controllers at app start (dependency injection)
+2. UI subscribes via `Obx` to reactive state
+3. Network layer sets auth header automatically when token changes
+
+## 7. Development & Quality
+
+Local linting / analysis (Flutter):
+```bash
+flutter analyze
+flutter test
 ```
 
-### ChatGPT/AI Assistant Usage
+Node style: prefer async/await, centralized error handler, minimal logic inside route definitions.
 
-**Primary Usage**: Architecture decisions, debugging, and complex problem solving
+### Error Handling Guarantees
+- All uncaught promise rejections are logged.
+- Mongo connection uses retry/backoff & can short‑circuit requests if DB is unavailable.
+- Client defensive guards around string slicing & null media.
 
-**Specific Applications**:
-- **Project Structure Planning**: Designed the overall architecture and folder organization
-- **State Management Strategy**: Chose GetX for Flutter state management and implemented controller patterns
-- **Database Relationship Design**: Created efficient MongoDB relationships between users, blogs, and comments
-- **Security Implementation**: JWT refresh token strategy and secure authentication flows
-- **Image Upload Integration**: Cloudinary integration for scalable image storage
-- **Performance Optimization**: Query optimization and efficient data loading strategies
+## 8. Operational Tips
 
-**Debugging Assistance**:
-- Resolved complex authentication flow issues
-- Fixed GetX controller lifecycle problems  
-- Solved Flutter build configuration issues
-- Debugged API response parsing and error handling
+Seeding (manual quick start): use a temporary script to insert starter categories or sample blogs, or adapt existing `migrate-categories.js` script in `backend/`.
 
-### AI-Assisted Development Workflow
+Health check: add a simple route e.g. `GET /api/health` returning `{ status: 'ok', db: mongoose.connection.readyState }` if you deploy.
 
-1. **Initial Planning**: AI helped outline project requirements and technical specifications
-2. **Code Generation**: Copilot provided rapid boilerplate and common patterns
-3. **Problem Solving**: AI assisted in debugging complex issues and suggesting solutions
-4. **Code Review**: AI suggested improvements for code quality and best practices
-5. **Documentation**: AI helped generate comprehensive documentation and comments
+Using a new empty database: set `MONGODB_URI` to a fresh database name; optional one‑time `DB_RESET_ON_START=true` to clear immediately, then revert to `false`.
 
-### Key Benefits Achieved
+## 9. Security Notes
+- Keep `.env` out of version control (already gitignored).
+- Never reuse JWT secrets across environments.
+- Always URL‑encode special characters in MongoDB passwords.
+- Validate image mime types before forwarding to Cloudinary.
 
-- **Development Speed**: 40-60% faster development due to code completion and boilerplate generation
-- **Code Quality**: Consistent patterns and best practices throughout the codebase
-- **Error Reduction**: AI-suggested error handling and validation patterns
-- **Learning Enhancement**: Exposure to modern development patterns and techniques
-- **Problem Resolution**: Quick solutions to complex technical challenges
+## 10. Roadmap Ideas
+- Push notification integration (FCM) for likes/comments
+- Role-based moderation & soft delete for blogs/comments
+- Offline draft storage & sync conflict resolution
+- In-app content analytics (views, read time estimation)
+- Multi-language localization & dynamic font scaling
+- Dark / AMOLED adaptive theme variant
 
-### Human Oversight and Validation
+## 11. Troubleshooting Quick Table
 
-All AI-generated code underwent thorough review and testing:
-- **Code Review**: Manual inspection of all AI suggestions
-- **Testing**: Comprehensive testing of functionality and edge cases
-- **Customization**: Adaptation of AI suggestions to project-specific requirements
-- **Optimization**: Performance tuning and refinement of AI-generated code
+| Issue | Likely Cause | Fix |
+|-------|--------------|-----|
+| Google auth fails | Mismatched client ID | Add correct client ID to `GOOGLE_CLIENT_IDS` (comma list) |
+| 10s DB buffering timeout | Wrong `MONGODB_URI` or network/firewall | Verify URI, IP allowlist in Atlas |
+| Images not showing | Missing Cloudinary credentials | Fill `.env` & restart server |
+| 401 on protected routes | Missing Bearer token | Confirm login flow saved token & header interceptor active |
+| Flutter network error on device | Using `localhost` | Use LAN IP or tunneled URL (e.g. ngrok) |
 
-## 📁 Project Structure
-
-```
-Assignment/
-├── backend/
-│   ├── models/          # MongoDB models (User, Blog, Comment)
-│   ├── routes/          # API route handlers
-│   ├── middleware/      # Authentication and validation middleware
-│   ├── config/          # Database and service configurations
-│   └── server.js        # Main server file
-├── mobile/
-│   ├── lib/
-│   │   ├── controllers/ # GetX controllers for state management
-│   │   ├── models/      # Data models
-│   │   ├── screens/     # UI screens and pages
-│   │   ├── widgets/     # Reusable UI components
-│   │   ├── services/    # API and utility services
-│   │   └── constants/   # App constants and configurations
-│   └── android/         # Android-specific configurations
-└── docs/               # Additional documentation
-```
-
-## 🔧 API Endpoints
-
-### Authentication
-- `POST /api/auth/google` - Google OAuth authentication
-- `POST /api/auth/logout` - User logout
-- `GET /api/auth/me` - Get current user profile
-- `POST /api/auth/upload-profile-picture` - Upload profile picture
-
-### Blogs
-- `GET /api/blogs` - Get all published blogs (with pagination)
-- `GET /api/blogs/my-blogs` - Get user's own blogs
-- `POST /api/blogs` - Create new blog post
-- `GET /api/blogs/:id` - Get specific blog post
-- `PUT /api/blogs/:id` - Update blog post
-- `DELETE /api/blogs/:id` - Delete blog post
-- `POST /api/blogs/:id/like` - Like/unlike blog post
-- `POST /api/blogs/:id/bookmark` - Bookmark/unbookmark blog
-- `GET /api/blogs/search` - Search blogs
-
-### Users
-- `GET /api/users/me/bookmarks` - Get user's bookmarked blogs
-- `GET /api/users/me/stats` - Get user statistics
-- `PUT /api/users/profile` - Update user profile
-
-### Comments
-- `GET /api/comments/:blogId` - Get comments for a blog
-- `POST /api/comments` - Create new comment
-- `POST /api/comments/:id/reply` - Reply to comment
-- `DELETE /api/comments/:id` - Delete comment
-
-## 🚦 Features Implemented
-
-### Core Features
-- ✅ User registration and authentication with Google
-- ✅ Create, edit, and delete blog posts
-- ✅ Rich text editor with formatting options
-- ✅ Image upload and display in blog posts
-- ✅ User profiles with customizable information
-- ✅ Like and bookmark functionality
-- ✅ Commenting system with nested replies
-- ✅ Search and filter blogs by category
-- ✅ Responsive mobile design
-
-### Advanced Features
-- ✅ JWT token-based authentication with refresh tokens
-- ✅ Real-time data updates using GetX reactive programming
-- ✅ Image optimization and cloud storage via Cloudinary
-- ✅ Pagination for efficient data loading
-- ✅ Pull-to-refresh functionality
-- ✅ Error handling and user feedback
-- ✅ Offline data persistence with SharedPreferences
-
-## 🧪 Testing
-
-The application has been thoroughly tested across multiple scenarios:
-
-- **Authentication Flow**: Google Sign-In, token management, logout
-- **Blog Operations**: CRUD operations, image uploads, content persistence
-- **Social Features**: Likes, bookmarks, comments, user interactions
-- **Profile Management**: Profile updates, statistics tracking
-- **Search & Navigation**: Content discovery and app navigation
-- **Error Handling**: Network failures, validation errors, edge cases
-
-## 👨‍💻 Developer
-
-**Nerella Manivenkat**
-- Email: 23211a66c1@bvrit.ac.in
-- Project: Mitt Arv Internship Assignment
+## 12. Author
+Nerella Manivenkat  
+Contact: 23211a66c1@bvrit.ac.in
 
 ---
+This repository represents a full-stack mobile blogging experience showcasing modern Flutter UI (glassmorphism), robust Node/Express API design, resilient Mongo connectivity, and structured state management with GetX.
 
-*This project demonstrates full-stack mobile development capabilities using modern technologies and AI-assisted development practices.*
-- **Cached Network Image** - Image caching and loading
-
-### Backend
-- **Node.js** - Runtime environment
-- **Express.js** - Web framework
-- **MongoDB** - Database with Atlas cloud hosting
-- **JWT** - Authentication tokens
-- **Bcrypt** - Password hashing
-- **Multer** - File upload handling
-- **CORS** - Cross-origin resource sharing
-
-### Additional Tools
-- **Cloudinary** - Image storage and processing
-- **MongoDB Atlas** - Cloud database hosting
-- **Postman** - API testing and documentation
-
-## ✨ Features Implemented
-
-### Core Features
-- [x] **User Authentication**
-  - JWT token-based authentication
-  - Google OAuth integration
-  - Login/Register with email
-  - Secure password hashing
-
-- [x] **Blog Management**
-  - Create, Read, Update, Delete blogs
-  - Rich text editor with formatting
-  - Featured image upload
-  - Category and tag system
-  - Blog drafts and publishing
-
-- [x] **User Profiles**
-  - Author profile pages
-  - Profile picture and bio
-  - User's published blogs
-  - Profile editing functionality
-
-- [x] **Social Features**
-  - Like/Unlike blog posts
-  - Bookmark/Save blogs
-  - Comment system with nested replies
-  - Author following (backend ready)
-
-- [x] **Search & Discovery**
-  - Search blogs by title, content, tags
-  - Category-based filtering
-  - Popular tags discovery
-  - Blog recommendations
-
-### Bonus Features
-- [x] **Advanced UI/UX**
-  - Material Design principles
-  - Responsive layouts
-  - Loading states and animations
-  - Error handling and validation
-  - Pull-to-refresh functionality
-
-- [x] **Performance Optimization**
-  - Image caching and lazy loading
-  - API response caching
-  - Efficient state management
-  - Optimized build outputs
-
-## 📁 Project Structure
-
-```
-blog-platform/
-├── backend/                 # Node.js API Server
-│   ├── models/             # MongoDB schemas
-│   ├── routes/             # API route handlers
-│   ├── middleware/         # Authentication & validation
-│   ├── config/            # Database configuration
-│   └── server.js          # Main server file
-├── mobile/                 # Flutter Mobile App
-│   ├── lib/
-│   │   ├── screens/       # UI screens
-│   │   ├── controllers/   # GetX controllers
-│   │   ├── models/        # Data models
-│   │   ├── services/      # API services
-│   │   ├── widgets/       # Reusable widgets
-│   │   └── constants/     # App constants & themes
-│   └── pubspec.yaml       # Flutter dependencies
-└── docs/                   # Documentation
-```
-
-## 🛠 Setup Instructions
-
-### Prerequisites
-- Node.js (v16 or higher)
-- Flutter SDK (v3.0 or higher)
-- MongoDB Atlas account
-- Firebase project for Google Auth
-
-### Backend Setup
-1. Navigate to backend directory:
-   ```bash
-   cd backend
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-3. Create `.env` file with your credentials:
-   ```env
-   MONGODB_URI=your_mongodb_atlas_uri
-   JWT_SECRET=your_jwt_secret_key
-   GOOGLE_CLIENT_ID=your_google_client_id
-   GOOGLE_CLIENT_SECRET=your_google_client_secret
-   CLOUDINARY_CLOUD_NAME=your_cloudinary_cloud_name
-   CLOUDINARY_API_KEY=your_cloudinary_api_key
-   CLOUDINARY_API_SECRET=your_cloudinary_api_secret
-   ```
-
-4. Start the server:
-   ```bash
-   npm start
-   ```
-   Server will run on `http://localhost:3000`
-
-### Mobile Demo Setup (using ngrok)
-
-**For testing on real mobile devices:**
-
-1. **Install ngrok:**
-   ```bash
-   npm install -g ngrok
-   ```
-
-2. **Expose backend with ngrok:**
-   ```bash
-   ngrok http 3000
-   ```
-   Copy the ngrok URL (e.g., `https://abc123.ngrok.io`)
-
-3. **Update mobile app API URL:**
-   - Edit `mobile/lib/constants/api_constants.dart`
-   - Replace `baseUrl` with your ngrok URL:
-   ```dart
-   static const String baseUrl = 'https://your-ngrok-url.ngrok.io/api';
-   ```
-
-### Mobile App Setup
-1. Navigate to mobile directory:
-   ```bash
-   cd mobile
-   ```
-
-2. Get Flutter dependencies:
-   ```bash
-   flutter pub get
-   ```
-
-3. Configure Firebase:
-   - Add your `google-services.json` (Android) and `GoogleService-Info.plist` (iOS)
-   - Update `lib/firebase_options.dart` with your Firebase config
-
-4. Run the app:
-   ```bash
-   # For web development
-   flutter run -d chrome
-   
-   # For mobile (ensure device/emulator is connected)
-   flutter run
-   ```
-
-## 🌐 API Endpoints
-
-### Authentication
-- `POST /api/auth/register` - User registration
-- `POST /api/auth/login` - User login
-- `POST /api/auth/google` - Google OAuth login
-- `GET /api/auth/profile` - Get user profile
-
-### Blogs
-- `GET /api/blogs` - Get all blogs
-- `GET /api/blogs/:id` - Get single blog
-- `POST /api/blogs` - Create new blog
-- `PUT /api/blogs/:id` - Update blog
-- `DELETE /api/blogs/:id` - Delete blog
-- `POST /api/blogs/:id/like` - Like/unlike blog
-- `POST /api/blogs/:id/bookmark` - Bookmark/unbookmark blog
-
-### Comments
-- `GET /api/comments/:blogId` - Get blog comments
-- `POST /api/comments` - Add new comment
-- `DELETE /api/comments/:id` - Delete comment
-
-### Users
-- `GET /api/users/:id` - Get user profile
-- `PUT /api/users/:id` - Update user profile
-- `GET /api/users/:id/blogs` - Get user's blogs
-
-## 🤖 AI Tools Usage
-
-This project extensively leveraged AI tools for development:
-
-### GitHub Copilot
-- **Code Generation**: Automated boilerplate code for models, controllers, and API routes
-- **Function Implementation**: Generated complete functions with proper error handling
-- **UI Components**: Suggested Flutter widgets and styling patterns
-- **Bug Fixes**: Identified and resolved code issues automatically
-
-### AI-Assisted Development Process
-1. **Architecture Planning**: AI helped structure the project folders and dependencies
-2. **Model Creation**: Generated MongoDB schemas and Flutter data models
-3. **API Development**: Created REST endpoints with proper validation
-4. **UI Implementation**: Built responsive Flutter screens and components
-5. **State Management**: Implemented GetX controllers with reactive programming
-6. **Error Handling**: Added comprehensive error handling throughout the app
-
-### Development Efficiency
-- **70% faster development** with AI-generated boilerplate code
-- **Reduced debugging time** through AI-suggested fixes
-- **Consistent code quality** with AI-recommended patterns
-- **Improved documentation** with AI-generated comments
-
-## 📱 App Features Demo
-
-### Authentication Flow
-1. **Splash Screen** - App initialization and auto-login
-2. **Login/Register** - Email/password and Google OAuth options
-3. **Profile Setup** - Complete user profile after registration
-
-### Blog Management
-1. **Blog Feed** - Infinite scroll with pull-to-refresh
-2. **Blog Details** - Rich content view with comments
-3. **Create/Edit** - Rich text editor with image upload
-4. **Search** - Advanced search with filters
-
-### User Experience
-1. **Smooth Animations** - Loading states and transitions
-2. **Offline Support** - Cached content and error handling
-3. **Responsive Design** - Works on all screen sizes
-4. **Dark Mode Ready** - Theme switching capability
-
-## 🔧 Development Commands
-
-### Backend
-```bash
-npm start          # Start development server
-npm run dev        # Start with nodemon (auto-restart)
-npm test          # Run tests (if configured)
-```
-
-### Mobile
-```bash
-flutter run -d chrome        # Run on Chrome
-flutter run -d web-server   # Run on web server
-flutter build web          # Build for web production
-flutter build apk         # Build Android APK
-flutter test              # Run widget tests
-```
-
-## 📊 Performance Metrics
-
-- **App Size**: ~56MB (release build)
-- **Load Time**: <2s on 3G connection
-- **API Response**: <500ms average
-- **Image Loading**: Cached with lazy loading
-- **Memory Usage**: Optimized with efficient state management
-
-## 🚀 Future Enhancements
-
-- [ ] Push notifications for new comments/likes
-- [ ] Real-time chat between users
-- [ ] Blog analytics and insights
-- [ ] Social media sharing integration
-- [ ] Advanced content moderation
-- [ ] Multi-language support
-
-## 👥 Contributing
-
-This project was developed as part of an internship assignment. For questions or suggestions, please contact the development team.

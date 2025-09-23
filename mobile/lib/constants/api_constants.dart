@@ -2,9 +2,9 @@ class ApiConstants {
   // Base URL - Update this with your ngrok URL when running mobile demo
   // For local testing: http://localhost:3000/api
   // For ngrok: https://your-ngrok-url.ngrok.io/api
-  // For same network: http://192.168.0.128:3000/api (your computer's IP)
+  // For same network: http://192.168.0.113:3000/api (your computer's IP)
   // Current ngrok URL: https://724c36e03118.ngrok-free.app/api (offline - using local IP)
-  static const String baseUrl = 'http://192.168.0.128:3000/api';
+  static const String baseUrl = 'http://192.168.0.113:3000/api';
   
   // Auth endpoints
   static const String login = '/auth/login';

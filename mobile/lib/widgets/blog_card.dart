@@ -78,7 +78,9 @@ class BlogCard extends StatelessWidget {
 
                   // Excerpt
                   Text(
-                    blog.excerpt ?? blog.content.substring(0, blog.content.length > 100 ? 100 : blog.content.length),
+                    blog.excerpt != null && blog.excerpt!.isNotEmpty
+                        ? blog.excerpt!
+                        : _safePreview(blog.content, 100),
                     style: AppTextStyles.body2.copyWith(
                       color: Colors.grey[600],
                     ),
@@ -123,7 +125,7 @@ class BlogCard extends StatelessWidget {
                             : null,
                         child: blog.author.avatar == null
                             ? Text(
-                                blog.author.name.substring(0, 1).toUpperCase(),
+                                (blog.author.name.isNotEmpty ? blog.author.name[0] : '?').toUpperCase(),
                                 style: const TextStyle(fontSize: 12),
                               )
                             : null,
@@ -227,5 +229,11 @@ class BlogCard extends StatelessWidget {
     } else {
       return '${difference.inMinutes}m ago';
     }
+  }
+
+  String _safePreview(String input, int max){
+    final trimmed = input.trim();
+    if(trimmed.length <= max) return trimmed;
+    return trimmed.substring(0, max).trim()+ '…';
   }
 }

@@ -22,7 +22,7 @@ class UserController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _apiService = Get.find<ApiService>();
+    _apiService = Get.isRegistered<ApiService>() ? Get.find<ApiService>() : ApiService();
   }
   
   // Get user profile by ID

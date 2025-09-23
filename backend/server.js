@@ -33,15 +33,50 @@ app.use('/api/', limiter);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// MongoDB connection
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/blog_platform', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => console.log('MongoDB connected successfully'))
-.catch(err => {
-  console.error('MongoDB connection error:', err.message);
-  console.log('Server will continue running without database connection');
+// MongoDB connection with retry + state tracking
+let mongoConnected = false;
+const MAX_RETRIES = 5;
+let attempts = 0;
+
+async function connectMongo(){
+  const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/blog_platform';
+  try {
+    await mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true });
+    // Optional one‑time reset if explicitly requested (DO NOT use in production)
+    if(process.env.DB_RESET_ON_START === 'true'){
+      try {
+        console.warn('[DB_RESET_ON_START] Dropping database to start fresh...');
+        await mongoose.connection.dropDatabase();
+        console.warn('[DB_RESET_ON_START] Database dropped successfully.');
+      } catch(dropErr){
+        console.error('[DB_RESET_ON_START] Failed to drop database:', dropErr.message);
+      }
+    }
+    mongoConnected = true;
+    console.log('MongoDB connected successfully');
+  } catch (err){
+    attempts += 1;
+    mongoConnected = false;
+    console.error(`MongoDB connection error (attempt ${attempts}/${MAX_RETRIES}):`, err.message);
+    if(attempts < MAX_RETRIES){
+      const backoff = Math.min(30000, 2000 * attempts);
+      console.log(`Retrying MongoDB connection in ${backoff/1000}s...`);
+      setTimeout(connectMongo, backoff);
+    } else {
+      console.log('Max MongoDB connection attempts reached. Running API in degraded mode (DB dependent routes will fail).');
+    }
+  }
+}
+connectMongo();
+
+// Middleware to short‑circuit DB dependent routes when disconnected (avoid 10s buffering timeouts)
+app.use((req,res,next)=>{
+  if(!mongoConnected){
+    // Allow only health and root paths so readiness probes still work
+    if(req.path.startsWith('/api/health')) return next();
+    return res.status(503).json({ error: 'Database unavailable', detail: 'MongoDB not connected', retry: true });
+  }
+  return next();
 });
 
 // Routes

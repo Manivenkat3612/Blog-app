@@ -21,16 +21,16 @@ class User {
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['_id'] ?? json['id'] ?? '',
-      email: json['email'] ?? '',
-      name: json['name'] ?? '',
-      bio: json['bio'] ?? '',
-      avatar: json['avatar'] ?? json['profilePicture'] ?? '',
+      id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
+      email: json['email']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      bio: json['bio']?.toString(),
+      avatar: json['avatar']?.toString() ?? json['profilePicture']?.toString(),
       createdAt: json['createdAt'] != null 
-          ? DateTime.parse(json['createdAt']) 
+          ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
           : DateTime.now(),
       updatedAt: json['updatedAt'] != null 
-          ? DateTime.parse(json['updatedAt']) 
+          ? DateTime.tryParse(json['updatedAt'].toString()) ?? DateTime.now()
           : DateTime.now(),
       bookmarks: List<String>.from(json['bookmarks'] ?? []),
     );
