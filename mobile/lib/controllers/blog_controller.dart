@@ -1,5 +1,4 @@
 import 'package:get/get.dart';
-import '../utils/logger.dart';
 import 'package:dio/dio.dart' as dio;
 import '../models/blog.dart';
 import '../models/comment.dart';
@@ -30,13 +29,13 @@ class BlogController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _apiService = Get.isRegistered<ApiService>() ? Get.find<ApiService>() : ApiService();
-    
     try {
+      _apiService = Get.find<ApiService>();
+      print('ApiService found successfully');
       fetchBlogs();
     } catch (e) {
-  logDebug('Error fetching blogs on init: $e');
-      error.value = 'Failed to load blogs: $e';
+      print('Error initializing BlogController: $e');
+      error.value = 'Failed to initialize API service: $e';
     }
   }
   
@@ -57,8 +56,8 @@ class BlogController extends GetxController {
       
       error.value = '';
       
-  logDebug('Fetching blogs from: ${ApiConstants.blogs}');
-  logDebug('API Base URL: ${ApiConstants.baseUrl}');
+      print('Fetching blogs from: ${ApiConstants.blogs}');
+      print('API Base URL: ${ApiConstants.baseUrl}');
       
       final response = await _apiService.get(
         ApiConstants.blogs,
@@ -70,21 +69,13 @@ class BlogController extends GetxController {
         },
       );
       
-  logDebug('Response status: ${response.statusCode}');
-  logDebug('Response data: ${response.data}');
+      print('Response status: ${response.statusCode}');
+      print('Response data: ${response.data}');
       
       if (response.statusCode == 200) {
         final data = response.data;
-        final List<dynamic> blogList = (data['blogs'] is List) ? data['blogs'] : <dynamic>[];
-        final List<Blog> newBlogs = [];
-        for(final item in blogList){
-          if(item is Map<String,dynamic>){
-            try {
-              final blog = Blog.fromJson(item);
-              if(blog.id.isNotEmpty) newBlogs.add(blog);
-            } catch (_) { /* skip malformed entry */ }
-          }
-        }
+        final List<dynamic> blogList = data['blogs'];
+        final List<Blog> newBlogs = blogList.map((json) => Blog.fromJson(json)).toList();
         
         if (refresh) {
           blogs.assignAll(newBlogs);
@@ -96,12 +87,12 @@ class BlogController extends GetxController {
         currentPage.value++;
       }
     } on dio.DioException catch (e) {
-  logDebug('DioException: ${e.message}');
-  logDebug('DioException type: ${e.type}');
-  logDebug('DioException response: ${e.response}');
+      print('DioException: ${e.message}');
+      print('DioException type: ${e.type}');
+      print('DioException response: ${e.response}');
       error.value = _apiService.getErrorMessage(e);
     } catch (e) {
-  logDebug('General error: $e');
+      print('General error: $e');
       error.value = 'Failed to fetch blogs: $e';
     } finally {
       isLoading.value = false;
@@ -121,70 +112,25 @@ class BlogController extends GetxController {
         return;
       }
       
-      // Some backends expect 'q', others 'query' or 'search'. Try cascading if first returns empty.
-      final paramVariants = [
-        {'q': query, 'limit': 20},
-        {'query': query, 'limit': 20},
-        {'search': query, 'limit': 20},
-      ];
-      List<Blog> aggregated = [];
-      dio.Response? lastResponse;
-      for(final params in paramVariants){
-        final resp = await _apiService.get(
-          ApiConstants.searchBlogs,
-          queryParameters: params,
-        );
-        lastResponse = resp;
-        if(resp.statusCode == 200){
-          final data = resp.data;
-          List<dynamic> blogList;
-          if(data is List){
-            blogList = data;
-          } else if(data is Map<String,dynamic>){
-            blogList = (data['results'] ?? data['blogs'] ?? data['data'] ?? data['items'] ?? []) as List<dynamic>;
-          } else {
-            blogList = const [];
-          }
-          for(final item in blogList){
-            if(item is Map<String,dynamic>){
-              try{ final b = Blog.fromJson(item); if(!aggregated.any((x)=>x.id==b.id)) aggregated.add(b); }catch(_){/* skip */}
-            }
-          }
-          if(aggregated.isNotEmpty){
-            break; // stop after first non-empty success
-          }
-        }
-      }
-      if(aggregated.isEmpty && lastResponse!=null && lastResponse.statusCode==200){
-        // no server matches; fall back local
-        _localFallbackSearch(query);
-      } else {
-        searchResults.assignAll(aggregated);
+      final response = await _apiService.get(
+        ApiConstants.searchBlogs,
+        queryParameters: {
+          'q': query,
+          'limit': 20,
+        },
+      );
+      
+      if (response.statusCode == 200) {
+        final List<dynamic> blogList = response.data;
+        searchResults.assignAll(blogList.map((json) => Blog.fromJson(json)));
       }
     } on dio.DioException catch (e) {
-      // Network/API error – attempt local fallback search
-      final msg = _apiService.getErrorMessage(e);
-      error.value = msg;
-      _localFallbackSearch(query);
+      error.value = _apiService.getErrorMessage(e);
     } catch (e) {
       error.value = 'Search failed';
-      _localFallbackSearch(query);
     } finally {
       isSearching.value = false;
     }
-  }
-
-  // Fallback: search in already loaded blogs (title, excerpt, tags, author)
-  void _localFallbackSearch(String query){
-    final q = query.toLowerCase();
-    final results = blogs.where((b){
-      return b.title.toLowerCase().contains(q) ||
-             (b.excerpt??'').toLowerCase().contains(q) ||
-             b.tags.any((t)=> t.toLowerCase().contains(q)) ||
-             b.author.name.toLowerCase().contains(q) ||
-             b.category.toLowerCase().contains(q);
-    }).toList();
-    searchResults.assignAll(results);
   }
   
   // Get blog by ID
@@ -339,13 +285,13 @@ class BlogController extends GetxController {
   // Like blog
   Future<void> likeBlog(String id) async {
     try {
-  logDebug('Liking blog: $id');
+      print('Liking blog: $id'); // Debug logging
       final response = await _apiService.post(
         ApiConstants.likeBlog.replaceAll('{id}', id),
       );
       
-  logDebug('Like response status: ${response.statusCode}');
-  logDebug('Like response data: ${response.data}');
+      print('Like response status: ${response.statusCode}'); // Debug logging
+      print('Like response data: ${response.data}'); // Debug logging
       
       if (response.statusCode == 200) {
         // Update the blog's like status in all lists
@@ -353,16 +299,16 @@ class BlogController extends GetxController {
         final message = response.data['message'] ?? 'Blog interaction updated';
         Get.snackbar('Success', message);
       } else {
-  logDebug('Like failed with status: ${response.statusCode}');
+        print('Like failed with status: ${response.statusCode}'); // Debug logging
         Get.snackbar('Error', 'Failed to like blog: HTTP ${response.statusCode}');
       }
     } on dio.DioException catch (e) {
-  logDebug('Like blog DioException: ${e.response?.statusCode} - ${e.response?.data}');
+      print('Like blog DioException: ${e.response?.statusCode} - ${e.response?.data}'); // Debug logging
       final errorMessage = _apiService.getErrorMessage(e);
       error.value = errorMessage;
       Get.snackbar('Error', 'Failed to like blog: $errorMessage');
     } catch (e) {
-  logDebug('Like blog general error: $e');
+      print('Like blog general error: $e'); // Debug logging
       error.value = 'Failed to like blog';
       Get.snackbar('Error', 'Failed to like blog: $e');
     }
@@ -371,13 +317,13 @@ class BlogController extends GetxController {
   // Bookmark blog
   Future<void> bookmarkBlog(String id) async {
     try {
-  logDebug('Bookmarking blog: $id');
+      print('Bookmarking blog: $id'); // Debug logging
       final response = await _apiService.post(
         ApiConstants.bookmarkBlog.replaceAll('{id}', id),
       );
       
-  logDebug('Bookmark response status: ${response.statusCode}');
-  logDebug('Bookmark response data: ${response.data}');
+      print('Bookmark response status: ${response.statusCode}'); // Debug logging
+      print('Bookmark response data: ${response.data}'); // Debug logging
       
       if (response.statusCode == 200) {
         // Update the blog's bookmark status in all lists
@@ -390,16 +336,16 @@ class BlogController extends GetxController {
         final message = response.data['message'] ?? 'Blog interaction updated';
         Get.snackbar('Success', message);
       } else {
-  logDebug('Bookmark failed with status: ${response.statusCode}');
+        print('Bookmark failed with status: ${response.statusCode}'); // Debug logging
         Get.snackbar('Error', 'Failed to bookmark blog: HTTP ${response.statusCode}');
       }
     } on dio.DioException catch (e) {
-  logDebug('Bookmark blog DioException: ${e.response?.statusCode} - ${e.response?.data}');
+      print('Bookmark blog DioException: ${e.response?.statusCode} - ${e.response?.data}'); // Debug logging
       final errorMessage = _apiService.getErrorMessage(e);
       error.value = errorMessage;
       Get.snackbar('Error', 'Failed to bookmark blog: $errorMessage');
     } catch (e) {
-  logDebug('Bookmark blog general error: $e');
+      print('Bookmark blog general error: $e'); // Debug logging
       error.value = 'Failed to bookmark blog';
       Get.snackbar('Error', 'Failed to bookmark blog: $e');
     }
@@ -616,7 +562,7 @@ class BlogController extends GetxController {
         isFormData: true,
       );
       
-  logDebug('Blog creation response: $response');
+      print('Blog creation response: $response'); // Debug log
       
       if (response['success'] == true && response['data'] != null) {
         final newBlog = Blog.fromJson(response['data']);

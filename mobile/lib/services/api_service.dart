@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../constants/api_constants.dart';
-import '../utils/logger.dart';
 
 class ApiService {
   late Dio _dio;
@@ -22,7 +21,7 @@ class ApiService {
       requestBody: true,
       responseBody: true,
       logPrint: (obj) {
-        logDebug('API Log: $obj');
+        print('API Log: $obj');
       },
     ));
     

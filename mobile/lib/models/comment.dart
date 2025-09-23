@@ -22,29 +22,20 @@ class Comment {
   });
 
   factory Comment.fromJson(Map<String, dynamic> json) {
-    // Create a default author if none provided
-    Map<String, dynamic> authorJson = json['author'] ?? {
-      '_id': 'unknown',
-      'name': 'Anonymous',
-      'email': 'anonymous@example.com',
-      'createdAt': DateTime.now().toIso8601String(),
-      'updatedAt': DateTime.now().toIso8601String(),
-    };
-    
     return Comment(
-      id: json['_id']?.toString() ?? json['id']?.toString() ?? '',
-      content: json['content']?.toString() ?? '',
-      author: User.fromJson(authorJson),
-      blogId: json['blog']?.toString() ?? json['blogId']?.toString() ?? '',
-      parentId: json['parentComment']?.toString() ?? json['parentId']?.toString(),
+      id: json['_id'] ?? json['id'] ?? '',
+      content: json['content'] ?? '',
+      author: User.fromJson(json['author'] ?? {}),
+      blogId: json['blog'] ?? json['blogId'] ?? '',
+      parentId: json['parentComment'] ?? json['parentId'],
       replies: (json['replies'] as List<dynamic>?)
           ?.map((reply) => Comment.fromJson(reply))
           .toList() ?? [],
       createdAt: json['createdAt'] != null 
-          ? DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now()
+          ? DateTime.parse(json['createdAt']) 
           : DateTime.now(),
       updatedAt: json['updatedAt'] != null 
-          ? DateTime.tryParse(json['updatedAt'].toString()) ?? DateTime.now()
+          ? DateTime.parse(json['updatedAt']) 
           : DateTime.now(),
     );
   }

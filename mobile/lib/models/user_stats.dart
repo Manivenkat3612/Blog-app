@@ -21,15 +21,15 @@ class UserStats {
 
   factory UserStats.fromJson(Map<String, dynamic> json) {
     return UserStats(
-      totalBlogs: (json['totalBlogs'] as num?)?.toInt() ?? 0,
-      publishedBlogs: (json['publishedBlogs'] as num?)?.toInt() ?? 0,
-      draftBlogs: (json['draftBlogs'] as num?)?.toInt() ?? 0,
-      totalLikes: (json['totalLikes'] as num?)?.toInt() ?? 0,
-      totalComments: (json['totalComments'] as num?)?.toInt() ?? 0,
-      bookmarksCount: (json['bookmarksCount'] as num?)?.toInt() ?? 0,
-      recentActivity: (json['recentActivity'] as num?)?.toInt() ?? 0,
+      totalBlogs: json['totalBlogs'] ?? 0,
+      publishedBlogs: json['publishedBlogs'] ?? 0,
+      draftBlogs: json['draftBlogs'] ?? 0,
+      totalLikes: json['totalLikes'] ?? 0,
+      totalComments: json['totalComments'] ?? 0,
+      bookmarksCount: json['bookmarksCount'] ?? 0,
+      recentActivity: json['recentActivity'] ?? 0,
       joinedDate: json['joinedDate'] != null 
-          ? DateTime.tryParse(json['joinedDate'].toString()) ?? DateTime.now()
+          ? DateTime.parse(json['joinedDate'])
           : DateTime.now(),
     );
   }

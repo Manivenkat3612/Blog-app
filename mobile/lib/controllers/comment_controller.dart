@@ -1,7 +1,6 @@
 import 'package:get/get.dart';
 import '../models/comment.dart';
 import '../services/api_service.dart';
-import '../utils/logger.dart';
 
 class CommentController extends GetxController {
   late final ApiService _apiService;
@@ -19,22 +18,22 @@ class CommentController extends GetxController {
   Future<void> fetchComments(String blogId) async {
     try {
       isLoading.value = true;
-      logDebug('Fetching comments for blog: $blogId');
+      print('Fetching comments for blog: $blogId'); // Debug logging
       final response = await _apiService.getData('/blogs/$blogId/comments');
-      logDebug('Comments response: $response');
+      print('Comments response: $response'); // Debug logging
       
       if (response['comments'] != null) {
         final commentList = (response['comments'] as List)
             .map((comment) => Comment.fromJson(comment))
             .toList();
         comments.assignAll(commentList); // Use assignAll to force update
-        logDebug('Successfully parsed ${commentList.length} comments');
+        print('Successfully parsed ${commentList.length} comments'); // Debug logging
       } else {
         comments.assignAll([]); // Use assignAll to force update
-        logDebug('No comments found in response');
+        print('No comments found in response'); // Debug logging
       }
     } catch (e) {
-      logDebug('Fetch comments error: $e');
+      print('Fetch comments error: $e'); // Debug logging
       Get.snackbar('Error', 'Failed to fetch comments: $e');
       comments.assignAll([]); // Use assignAll to force update
     } finally {
@@ -45,21 +44,21 @@ class CommentController extends GetxController {
   Future<void> addComment(String blogId, String content, {String? parentId}) async {
     try {
       isPosting.value = true;
-      logDebug('Adding comment to blog: $blogId with content: $content');
+      print('Adding comment to blog: $blogId with content: $content'); // Debug logging
       final response = await _apiService.postData('/blogs/$blogId/comments', {
         'content': content,
         if (parentId != null) 'parentComment': parentId,
       });
-      logDebug('Add comment response: $response');
+      print('Add comment response: $response'); // Debug logging
       
       if (response.isNotEmpty) {
         Get.snackbar('Success', 'Comment added successfully');
         // Force refresh comments after adding
         await fetchComments(blogId);
-        logDebug('Comments count after refresh: ${comments.length}');
+        print('Comments count after refresh: ${comments.length}'); // Debug logging
       }
     } catch (e) {
-      logDebug('Add comment error: $e');
+      print('Add comment error: $e'); // Debug logging
       Get.snackbar('Error', 'Failed to add comment: $e');
     } finally {
       isPosting.value = false;

@@ -9,6 +9,9 @@ import '../screens/blog/edit_blog_screen.dart';
 import '../screens/profile/profile_screen.dart';
 import '../screens/profile/edit_profile_screen.dart';
 import '../screens/search/search_screen.dart';
+import '../controllers/auth_controller.dart';
+import '../controllers/blog_controller.dart';
+import '../controllers/user_controller.dart';
 
 class AppRoutes {
   static const String splash = '/splash';
@@ -26,16 +29,84 @@ class AppRoutes {
 
 class AppPages {
   static final routes = [
-    GetPage(name: AppRoutes.splash, page: () => const SplashScreen()),
-    GetPage(name: AppRoutes.login, page: () => const LoginScreen()),
-    GetPage(name: AppRoutes.register, page: () => const RegisterScreen()),
-    GetPage(name: AppRoutes.home, page: () => const BlogListScreen()),
-    GetPage(name: AppRoutes.blogDetail, page: () => const BlogDetailScreen()),
-    GetPage(name: AppRoutes.createBlog, page: () => const CreateBlogScreen()),
-    GetPage(name: AppRoutes.editBlog, page: () => const EditBlogScreen()),
-    GetPage(name: AppRoutes.profile, page: () => const ProfileScreen()),
-    GetPage(name: AppRoutes.editProfile, page: () => const EditProfileScreen()),
-    GetPage(name: AppRoutes.search, page: () => const SearchScreen()),
-    GetPage(name: AppRoutes.userProfile, page: () => const ProfileScreen()),
+    GetPage(
+      name: AppRoutes.splash,
+      page: () => const SplashScreen(),
+      binding: BindingsBuilder(() {
+        Get.put(AuthController());
+      }),
+    ),
+    GetPage(
+      name: AppRoutes.login,
+      page: () => const LoginScreen(),
+      binding: BindingsBuilder(() {
+        Get.put(AuthController());
+      }),
+    ),
+    GetPage(
+      name: AppRoutes.register,
+      page: () => const RegisterScreen(),
+      binding: BindingsBuilder(() {
+        Get.put(AuthController());
+      }),
+    ),
+    GetPage(
+      name: AppRoutes.home,
+      page: () => const BlogListScreen(),
+      binding: BindingsBuilder(() {
+        Get.put(AuthController());
+        Get.put(BlogController());
+        Get.put(UserController());
+      }),
+    ),
+    GetPage(
+      name: AppRoutes.blogDetail,
+      page: () => const BlogDetailScreen(),
+      binding: BindingsBuilder(() {
+        Get.put(BlogController());
+      }),
+    ),
+    GetPage(
+      name: AppRoutes.createBlog,
+      page: () => const CreateBlogScreen(),
+      binding: BindingsBuilder(() {
+        Get.put(BlogController());
+      }),
+    ),
+    GetPage(
+      name: AppRoutes.editBlog,
+      page: () => const EditBlogScreen(),
+      binding: BindingsBuilder(() {
+        Get.put(BlogController());
+      }),
+    ),
+    GetPage(
+      name: AppRoutes.profile,
+      page: () => const ProfileScreen(),
+      binding: BindingsBuilder(() {
+        Get.put(UserController());
+      }),
+    ),
+    GetPage(
+      name: AppRoutes.editProfile,
+      page: () => const EditProfileScreen(),
+      binding: BindingsBuilder(() {
+        Get.put(UserController());
+      }),
+    ),
+    GetPage(
+      name: AppRoutes.search,
+      page: () => const SearchScreen(),
+      binding: BindingsBuilder(() {
+        Get.put(BlogController());
+      }),
+    ),
+    GetPage(
+      name: AppRoutes.userProfile,
+      page: () => const ProfileScreen(),
+      binding: BindingsBuilder(() {
+        Get.put(UserController());
+      }),
+    ),
   ];
 }
